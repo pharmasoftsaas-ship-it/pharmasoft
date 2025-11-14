@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId = String(user.id) // TS now understands this is definitely a string
+    // Type assertion: user.id is string (UUID), users.id is also string (UUID)
+    const userId: string = user.id
 
     const { data: userData } = await supabase
       .from('users')
