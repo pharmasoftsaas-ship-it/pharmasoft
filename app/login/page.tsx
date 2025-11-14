@@ -25,230 +25,42 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log('Starting login...')
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      console.log('Supabase URL:', supabaseUrl?.substring(0, 30) + '...')
-      console.log('Supabase Key exists:', !!supabaseKey)
-      
-      if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your_supabase_project_url') {
-        setError('Supabase is not configured. Please check your environment variables.')
-        setLoading(false)
-        return
-      }
-      
-      // Test Supabase connection first
-      console.log('Testing Supabase connection...')
-      try {
-        const { data: healthCheck } = await Promise.race([
-          fetch(`${supabaseUrl}/rest/v1/`, { 
-            method: 'HEAD',
-            headers: { 'apikey': supabaseKey }
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection test timed out')), 5000))
-        ])
-        console.log('Supabase connection test:', healthCheck?.status)
-      } catch (healthError) {
-        console.error('Supabase connection test failed:', healthError)
-        setError('Cannot connect to Supabase. Please check your internet connection and Supabase project status.')
-        setLoading(false)
-        return
-      }
-      
-      // Add timeout to prevent hanging
-      console.log('Attempting authentication...')
-      
-      // Try direct API call since Supabase client is timing out
-      console.log('Using direct API call for authentication...')
-      let authData: any = null
-      let authError: any = null
-      
-      try {
-        const directAuthResponse = await Promise.race([
-          fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseKey,
-            },
-            body: JSON.stringify({ email, password }),
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Auth request timed out')), 10000))
-        ]) as Response
-        
-        console.log('Direct auth response status:', directAuthResponse.status)
-        
-        if (directAuthResponse.ok) {
-          const responseData = await directAuthResponse.json()
-          console.log('Auth successful, got tokens:', {
-            hasAccessToken: !!responseData.access_token,
-            hasRefreshToken: !!responseData.refresh_token,
-            hasUser: !!responseData.user
-          })
-          
-          // Store tokens in localStorage as fallback
-          if (responseData.access_token) {
-            localStorage.setItem(`sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`, JSON.stringify({
-              access_token: responseData.access_token,
-              refresh_token: responseData.refresh_token,
-              expires_at: responseData.expires_at || Math.floor(Date.now() / 1000) + (responseData.expires_in || 3600),
-              token_type: responseData.token_type || 'bearer',
-              user: responseData.user
-            }))
-          }
-          
-          // Use user from response or decode from token
-          if (responseData.user) {
-            authData = { user: responseData.user }
-            console.log('User data from response')
-          } else if (responseData.access_token) {
-            // Decode JWT to get user info
-            try {
-              const tokenParts = responseData.access_token.split('.')
-              if (tokenParts[1]) {
-                const payload = JSON.parse(atob(tokenParts[1]))
-                authData = { 
-                  user: { 
-                    id: payload.sub, 
-                    email: payload.email || email,
-                    aud: payload.aud,
-                    role: payload.role
-                  } 
-                }
-                console.log('User data extracted from token')
-              }
-            } catch (e) {
-              console.error('Could not decode token:', e)
-              authError = { message: 'Could not decode authentication token' }
-            }
-          }
-          
-          if (responseData.access_token && responseData.refresh_token) {
-            console.log('Setting session via API route...')
-            // Use server-side API to set session (avoids client timeout)
-            try {
-              const sessionResponse = await fetch('/api/auth/set-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  access_token: responseData.access_token,
-                  refresh_token: responseData.refresh_token,
-                }),
-              })
-              
-              if (sessionResponse.ok) {
-                const sessionData = await sessionResponse.json()
-                console.log('Session set successfully via API')
-                authData = { user: sessionData.user }
-              } else {
-                const errorData = await sessionResponse.json()
-                console.error('Session API error:', errorData)
-                authError = { message: errorData.error || 'Failed to set session' }
-              }
-            } catch (apiError: any) {
-              console.error('Session API call failed:', apiError)
-              // Still try to proceed with user data from token
-              if (responseData.user) {
-                authData = { user: responseData.user }
-              } else if (responseData.access_token) {
-                try {
-                  const tokenParts = responseData.access_token.split('.')
-                  if (tokenParts[1]) {
-                    const payload = JSON.parse(atob(tokenParts[1]))
-                    authData = { 
-                      user: { 
-                        id: payload.sub, 
-                        email: payload.email || email
-                      } 
-                    }
-                  }
-                } catch (e) {
-                  authError = { message: 'Failed to set session' }
-                }
-              }
-            }
-          }
-          
-          if (authData?.user) {
-            console.log('Authentication successful, redirecting...')
-            window.location.href = '/dashboard'
-            return
-          } else {
-            authError = { message: 'Could not retrieve user information from authentication response' }
-          }
-        } else {
-          const errorData = await directAuthResponse.json()
-          console.error('Auth error:', errorData)
-          authError = { message: errorData.error_description || errorData.message || 'Authentication failed' }
-        }
-      } catch (directError: any) {
-        console.error('Direct auth failed:', directError)
-        authError = directError
-      }
-      
-      // Fallback to Supabase client if direct call fails
-      if (authError && !authData) {
-        console.log('Falling back to Supabase client...')
-        const authPromise = supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Login request timed out after 10 seconds.')), 10000)
-        )
-        
-        const result = await Promise.race([authPromise, timeoutPromise]) as any
-        if (result?.data) {
-          authData = result.data
-          authError = result.error
-        } else {
-          authError = result
-        }
-      }
-      
-      const { data, error } = { data: authData, error: authError }
+      // Use official Supabase Auth method
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      console.log('Auth response:', { data: data?.user?.id, error })
-
-      if (error) {
-        console.error('Auth error:', error)
-        setError(error.message)
+      if (authError) {
+        setError(authError.message)
         setLoading(false)
         return
       }
 
-      if (data?.user) {
-        console.log('User authenticated, checking users table...')
-        // Verify user exists in users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('tenant_id')
-          .eq('id', data.user.id)
-          .single()
-
-        console.log('User data query result:', { userData, userError })
-
-        if (userError || !userData) {
-          console.error('User not found in users table:', userError)
-          setError('User account not found. Please contact your administrator.')
-          setLoading(false)
-          // Sign out since user doesn't exist in users table
-          await supabase.auth.signOut()
-          return
-        }
-
-        console.log('Login successful, redirecting...')
-        // Success - use window.location for full page reload to ensure session is set
-        window.location.href = '/dashboard'
-      } else {
-        console.error('No user in auth response')
+      if (!data.user) {
         setError('Login failed. Please try again.')
         setLoading(false)
+        return
       }
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An unexpected error occurred. Please try again.')
+
+      // Verify user exists in users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', data.user.id)
+        .single()
+
+      if (userError || !userData) {
+        setError('User account not found. Please contact your administrator.')
+        setLoading(false)
+        await supabase.auth.signOut()
+        return
+      }
+
+      // Success - redirect to dashboard
+      router.push('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }
@@ -332,4 +144,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

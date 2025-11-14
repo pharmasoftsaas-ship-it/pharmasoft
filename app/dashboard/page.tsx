@@ -157,14 +157,16 @@ export default async function DashboardPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user?.id) {
     redirect('/login')
   }
 
+  const userId: string = user.id
+
   const { data: userData, error: userDataError } = await supabase
     .from('users')
-    .select('tenant_id')
-    .eq('id', user.id)
+    .select('id, tenant_id')
+    .eq('id', userId)
     .single()
 
   if (userDataError || !userData) {

@@ -7,14 +7,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userId: string = user.id
+
     const { data: userData } = await supabase
       .from('users')
-      .select('tenant_id')
-      .eq('id', user.id)
+      .select('id, tenant_id')
+      .eq('id', userId)
       .single()
 
     if (!userData) {
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
       .from('sales')
       .insert({
         tenant_id: userData.tenant_id,
-        user_id: user.id,
+        user_id: userId,
         total_amount: totalAmount,
       })
       .select()

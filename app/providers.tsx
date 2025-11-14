@@ -37,11 +37,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
         
-        if (user) {
+        if (user?.id) {
+          const userId: string = user.id
           const { data: userData } = await supabase
             .from('users')
-            .select('tenant_id')
-            .eq('id', user.id)
+            .select('id, tenant_id')
+            .eq('id', userId)
             .single()
           
           if (userData) {
@@ -64,12 +65,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           setUser(session?.user ?? null)
-          if (session?.user) {
+          if (session?.user?.id) {
             try {
+              const userId: string = session.user.id
               const { data: userData } = await supabase
                 .from('users')
-                .select('tenant_id')
-                .eq('id', session.user.id)
+                .select('id, tenant_id')
+                .eq('id', userId)
                 .single()
               
               if (userData) {
