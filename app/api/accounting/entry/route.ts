@@ -6,14 +6,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const userId = String(user.id) // TS now understands this is definitely a string
 
     const { data: userData } = await supabase
       .from('users')
       .select('id, tenant_id')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!userData) {
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Create audit log
     await supabase.from('audit_logs').insert({
       tenant_id: userData.tenant_id,
-      user_id: user.id,
+      user_id: userId,
       action: 'create',
       entity: 'accounting_entry',
       entity_id: entry.id,
