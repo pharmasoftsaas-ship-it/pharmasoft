@@ -161,12 +161,10 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const userId: string = user.id
-
   const { data: userData, error: userDataError } = await supabase
     .from('users')
     .select('id, tenant_id')
-    .eq('id', userId)
+    .eq('id', user.id)
     .single()
 
   if (userDataError || !userData) {

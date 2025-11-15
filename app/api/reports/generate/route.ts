@@ -10,12 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userId: string = user.id
-
     const { data: userData } = await supabase
       .from('users')
       .select('id, tenant_id')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single()
 
     if (!userData) {

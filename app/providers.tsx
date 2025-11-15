@@ -38,11 +38,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setUser(user)
         
         if (user?.id) {
-          const userId: string = user.id
           const { data: userData } = await supabase
             .from('users')
             .select('id, tenant_id')
-            .eq('id', userId)
+            .eq('id', user.id)
             .single()
           
           if (userData) {
@@ -67,11 +66,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null)
           if (session?.user?.id) {
             try {
-              const userId: string = session.user.id
               const { data: userData } = await supabase
                 .from('users')
                 .select('id, tenant_id')
-                .eq('id', userId)
+                .eq('id', session.user.id)
                 .single()
               
               if (userData) {
