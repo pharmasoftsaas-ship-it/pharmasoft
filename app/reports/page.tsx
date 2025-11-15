@@ -30,6 +30,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadReport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period])
 
   const loadReport = async () => {

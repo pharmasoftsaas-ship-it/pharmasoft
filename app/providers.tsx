@@ -89,7 +89,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         subscription.unsubscribe()
       }
     }
-  }, [supabase])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <UserContext.Provider value={{ user, tenantId, loading }}>

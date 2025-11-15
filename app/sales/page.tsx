@@ -65,6 +65,7 @@ export default function SalesPage() {
       ]
       setItems(sampleItems)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleBarcodeScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {

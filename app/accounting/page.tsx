@@ -37,6 +37,7 @@ export default function AccountingPage() {
 
   useEffect(() => {
     loadEntries()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadEntries = async () => {
@@ -105,7 +106,7 @@ export default function AccountingPage() {
         note: '',
       })
       setShowForm(false)
-      loadEntries()
+      await loadEntries()
       alert('Entry created successfully!')
     } catch (error: any) {
       alert(error.message || 'Failed to create entry')

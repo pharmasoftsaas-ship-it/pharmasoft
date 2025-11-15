@@ -40,6 +40,7 @@ export default function PurchasesPage() {
 
   useEffect(() => {
     loadPurchases()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadPurchases = async () => {
@@ -109,7 +110,7 @@ export default function PurchasesPage() {
         items: [],
       })
       setShowForm(false)
-      loadPurchases()
+      await loadPurchases()
       alert('Purchase created successfully!')
     } catch (error: any) {
       alert(error.message || 'Failed to create purchase')

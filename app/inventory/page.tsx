@@ -43,6 +43,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lowStockFilter, nearExpiryFilter])
 
   const loadData = async () => {
