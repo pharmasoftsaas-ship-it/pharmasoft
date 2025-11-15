@@ -36,6 +36,7 @@ export default function PurchasesPage() {
     }>,
   })
   const supabase = createClient()
+  const { t, isRTL } = useI18n()
 
   useEffect(() => {
     loadPurchases()
